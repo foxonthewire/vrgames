@@ -74,12 +74,39 @@
         textEntity.setAttribute('color', '#FFF');
         textEntity.setAttribute('align', 'center');
         textEntity.setAttribute('position', `${xPos} ${yPos} ${zPos}`);
-        textEntity.setAttribute('rotation', `0 ${angle} 0`);
-        textEntity.setAttribute('animation', `property: rotation; to: 0 ${angle + 360} 0; loop: true; dur: 3000; easing: linear;`);
+        textEntity.setAttribute('rotation', `45 ${angle} 45`);
+        textEntity.setAttribute('animation', `property: rotation; to: 45 ${angle + 360} 45; loop: true; dur: 3000; easing: linear;`);
         textEntity.setAttribute('animation__position', `property: position; to: ${xPos} ${yPos - 0.5} ${zPos}; loop: true; dir: alternate; dur: 2000; easing: easeInOutQuad;`);
 
         eventVrDisplay.appendChild(textEntity);
       });
+
+      // Display dates with no events
+      const today = new Date();
+      for (let i = 0; i < 30; i++) {
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + i);
+        const dateStr = futureDate.toISOString().split('T')[0];
+
+        if (!events.find(event => event.date === dateStr)) {
+          const angle = Math.random() * 360;
+          const radius = 8;
+          const xPos = radius * Math.cos(angle * (Math.PI / 180));
+          const zPos = radius * Math.sin(angle * (Math.PI / 180));
+          const yPos = 1 + Math.random() * 2;
+
+          const textEntity = document.createElement('a-text');
+          textEntity.setAttribute('value', `No Events\n${dateStr}`);
+          textEntity.setAttribute('color', '#888');
+          textEntity.setAttribute('align', 'center');
+          textEntity.setAttribute('position', `${xPos} ${yPos} ${zPos}`);
+          textEntity.setAttribute('rotation', `45 ${angle} 45`);
+          textEntity.setAttribute('animation', `property: rotation; to: 45 ${angle + 360} 45; loop: true; dur: 4000; easing: linear;`);
+          textEntity.setAttribute('animation__position', `property: position; to: ${xPos} ${yPos - 0.5} ${zPos}; loop: true; dir: alternate; dur: 2500; easing: easeInOutQuad;`);
+
+          eventVrDisplay.appendChild(textEntity);
+        }
+      }
     };
 
     // Load events from localStorage
@@ -88,12 +115,27 @@
       eventList.innerHTML = '';
       eventVrDisplay.innerHTML = '';
 
-      events.forEach(event => {
-        // Add to standard event list
+      // Display all dates for the month with or without events
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      for (let date = monthStart; date <= monthEnd; date.setDate(date.getDate() + 1)) {
+        const dateStr = date.toISOString().split('T')[0];
+        const event = events.find(e => e.date === dateStr);
+
         const li = document.createElement('li');
-        li.textContent = `${event.title} - ${event.date} ${event.time}`;
+        li.textContent = event ? `${event.title} - ${event.date} ${event.time}` : `No Events - ${dateStr}`;
+
+        if (event) {
+          li.style.cursor = 'pointer';
+          li.addEventListener('click', () => {
+            deleteEvent(event);
+          });
+        }
+
         eventList.appendChild(li);
-      });
+      }
     };
 
     // Save events to localStorage
@@ -101,6 +143,14 @@
       const events = JSON.parse(localStorage.getItem('events')) || [];
       events.push(event);
       localStorage.setItem('events', JSON.stringify(events));
+    };
+
+    // Delete event from localStorage
+    const deleteEvent = (eventToDelete) => {
+      let events = JSON.parse(localStorage.getItem('events')) || [];
+      events = events.filter(event => event.date !== eventToDelete.date || event.time !== eventToDelete.time || event.title !== eventToDelete.title);
+      localStorage.setItem('events', JSON.stringify(events));
+      loadEvents();
     };
 
     // Form submission
