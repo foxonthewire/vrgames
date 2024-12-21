@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar App</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+</head>
+<body style="margin: 0; overflow: hidden; background-color: black;">
+  <h1 style="color: white;">Calendar App</h1>
+  <form id="event-form">
+    <label for="event-title">Event Title:</label>
+    <input type="text" id="event-title" required>
+
+    <label for="event-date">Event Date:</label>
+    <input type="date" id="event-date" required>
+
+    <label for="event-time">Event Time:</label>
+    <input type="time" id="event-time" required>
+
+    <button type="submit">Add Event</button>
+  </form>
+
+  <h2 style="color: white;">Upcoming Events</h2>
+  <ul id="event-list" style="color: white;"></ul>
+
+  <button id="enter-vr" style="position: absolute; top: 10px; left: 10px; z-index: 10; padding: 10px; background-color: white; border: none; cursor: pointer;">
+    Enter VR
+  </button>
+
+  <!-- VR Scene -->
+  <a-scene embedded>
+    <a-entity camera look-controls>
+      <a-cursor color="yellow"></a-cursor>
+    </a-entity>
+    <a-entity id="event-vr-display" position="0 1.6 -3"></a-entity>
+
+    <!-- Spinning Grid -->
+    <a-plane color="#222" width="50" height="50" rotation="-90 0 0" position="0 0 0" material="wireframe: true;"></a-plane>
+  </a-scene>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('calendar-worker.js').then(() => {
+        console.log('Service Worker registered.');
+      }).catch(console.error);
+    }
+
+    const eventForm = document.getElementById('event-form');
+    const eventList = document.getElementById('event-list');
+    const eventVrDisplay = document.getElementById('event-vr-display');
+
+    const enterVrButton = document.getElementById('enter-vr');
+    enterVrButton.addEventListener('click', () => {
+      const scene = document.querySelector('a-scene');
+      if (scene && scene.enterVR) {
+        scene.enterVR();
+      }
+      createSpinningEvents();
+    });
+
+    const createSpinningEvents = () => {
+      const events = JSON.parse(localStorage.getItem('events')) || [];
+
+      events.forEach((event, index) => {
+        const angle = index * (360 / events.length);
+        const radius = 5;
+        const xPos = radius * Math.cos(angle * (Math.PI / 180));
+        const zPos = radius * Math.sin(angle * (Math.PI / 180));
+        const yPos = 1 + Math.random() * 2;
+
+        const textEntity = document.createElement('a-text');
+        textEntity.setAttribute('value', `${event.title}\n${event.date} ${event.time}`);
+        textEntity.setAttribute('color', '#FFF');
+        textEntity.setAttribute('align', 'center');
+        textEntity.setAttribute('position', `${xPos} ${yPos} ${zPos}`);
+        textEntity.setAttribute('rotation', `0 ${angle} 0`);
+        textEntity.setAttribute('animation', `property: rotation; to: 0 ${angle + 360} 0; loop: true; dur: 3000; easing: linear;`);
+        textEntity.setAttribute('animation__position', `property: position; to: ${xPos} ${yPos - 0.5} ${zPos}; loop: true; dir: alternate; dur: 2000; easing: easeInOutQuad;`);
+
+        eventVrDisplay.appendChild(textEntity);
+      });
+    };
+
+    // Load events from localStorage
+    const loadEvents = () => {
+      const events = JSON.parse(localStorage.getItem('events')) || [];
+      eventList.innerHTML = '';
+      eventVrDisplay.innerHTML = '';
+
+      events.forEach(event => {
+        // Add to standard event list
+        const li = document.createElement('li');
+        li.textContent = `${event.title} - ${event.date} ${event.time}`;
+        eventList.appendChild(li);
+      });
+    };
+
+    // Save events to localStorage
+    const saveEvent = (event) => {
+      const events = JSON.parse(localStorage.getItem('events')) || [];
+      events.push(event);
+      localStorage.setItem('events', JSON.stringify(events));
+    };
+
+    // Form submission
+    eventForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById('event-title').value;
+      const date = document.getElementById('event-date').value;
+      const time = document.getElementById('event-time').value;
+
+      const event = { title, date, time };
+      saveEvent(event);
+
+      // Notify the service worker to schedule a notification
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SCHEDULE_NOTIFICATION',
+          event
+        });
+      }
+
+      eventForm.reset();
+      loadEvents();
+    });
+
+    loadEvents();
+  </script>
+</body>
+</html>
