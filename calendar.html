@@ -24,6 +24,10 @@
   <h2 style="color: white;">Upcoming Events</h2>
   <ul id="event-list" style="color: white;"></ul>
 
+  <button id="notification-permission" style="position: absolute; top: 10px; right: 10px; z-index: 10; padding: 10px; background-color: white; border: none; cursor: pointer;">
+    Enable Notifications
+  </button>
+
   <button id="enter-vr" style="position: absolute; top: 10px; left: 10px; z-index: 10; padding: 10px; background-color: white; border: none; cursor: pointer;">
     Enter VR
   </button>
@@ -49,6 +53,21 @@
     const eventForm = document.getElementById('event-form');
     const eventList = document.getElementById('event-list');
     const eventVrDisplay = document.getElementById('event-vr-display');
+    const notificationPermissionButton = document.getElementById('notification-permission');
+
+    notificationPermissionButton.addEventListener('click', () => {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            alert('Notifications enabled!');
+          } else {
+            alert('Notifications denied!');
+          }
+        });
+      } else {
+        alert('Notifications are already ' + Notification.permission);
+      }
+    });
 
     const enterVrButton = document.getElementById('enter-vr');
     enterVrButton.addEventListener('click', () => {
@@ -80,33 +99,6 @@
 
         eventVrDisplay.appendChild(textEntity);
       });
-
-      // Display dates with no events
-      const today = new Date();
-      for (let i = 0; i < 30; i++) {
-        const futureDate = new Date();
-        futureDate.setDate(today.getDate() + i);
-        const dateStr = futureDate.toISOString().split('T')[0];
-
-        if (!events.find(event => event.date === dateStr)) {
-          const angle = Math.random() * 360;
-          const radius = 8;
-          const xPos = radius * Math.cos(angle * (Math.PI / 180));
-          const zPos = radius * Math.sin(angle * (Math.PI / 180));
-          const yPos = 1 + Math.random() * 2;
-
-          const textEntity = document.createElement('a-text');
-          textEntity.setAttribute('value', `No Events\n${dateStr}`);
-          textEntity.setAttribute('color', '#888');
-          textEntity.setAttribute('align', 'center');
-          textEntity.setAttribute('position', `${xPos} ${yPos} ${zPos}`);
-          textEntity.setAttribute('rotation', `45 ${angle} 45`);
-          textEntity.setAttribute('animation', `property: rotation; to: 45 ${angle + 360} 45; loop: true; dur: 4000; easing: linear;`);
-          textEntity.setAttribute('animation__position', `property: position; to: ${xPos} ${yPos - 0.5} ${zPos}; loop: true; dir: alternate; dur: 2500; easing: easeInOutQuad;`);
-
-          eventVrDisplay.appendChild(textEntity);
-        }
-      }
     };
 
     // Load events from localStorage
@@ -141,8 +133,12 @@
     // Save events to localStorage
     const saveEvent = (event) => {
       const events = JSON.parse(localStorage.getItem('events')) || [];
-      events.push(event);
-      localStorage.setItem('events', JSON.stringify(events));
+      const eventExists = events.some(e => e.date === event.date && e.time === event.time && e.title === event.title);
+
+      if (!eventExists) {
+        events.push(event);
+        localStorage.setItem('events', JSON.stringify(events));
+      }
     };
 
     // Delete event from localStorage
