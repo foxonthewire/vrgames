@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dangerous Thing that is Dumb</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+</head>
+<body>
+  <a-scene>
+    <!-- Sky -->
+    <a-sky color="#000033"></a-sky>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
+    <a-light type="point" position="5 10 5" intensity="2" distance="50"></a-light>
+
+    <!-- Random Shapes -->
+    <a-entity id="shapes">
+      <script>
+        const shapesEntity = document.querySelector('#shapes');
+        for (let i = 0; i < 300; i++) {
+          const randomShapeType = Math.random() > 0.5 ? 'a-box' : 'a-sphere';
+          const randomX = (Math.random() - 0.5) * 100;
+          const randomY = (Math.random() - 0.5) * 50;
+          const randomZ = (Math.random() - 0.5) * 100;
+          const randomSize = Math.random() * 2 + 0.5;
+          const randomColor = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+
+          const shape = document.createElement(randomShapeType);
+          shape.setAttribute('position', `${randomX} ${randomY} ${randomZ}`);
+          shape.setAttribute('scale', `${randomSize} ${randomSize} ${randomSize}`);
+          shape.setAttribute('color', randomColor);
+          shape.setAttribute('animation', `property: color; to: #${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}; dir: alternate; loop: true; dur: 1000`);
+          shapesEntity.appendChild(shape);
+        }
+      </script>
+    </a-entity>
+
+    <!-- Ground Plane (optional for reference) -->
+    <a-plane rotation="-90 0 0" width="50" height="50" color="#444444"></a-plane>
+
+    <!-- Camera with increased speed and endless rotation -->
+    <a-entity id="camera-wrapper" position="0 1.6 0" animation__position="property: position; to: 50 1.6 50; dir: alternate; loop: true; dur: 42; easing: easeInOutQuad" animation__rotation="property: rotation; to: 0 25200 0; loop: true; dur: 600">
+      <a-camera>
+        <a-cursor></a-cursor>
+      </a-camera>
+    </a-entity>
+  </a-scene>
+</body>
+</html>
