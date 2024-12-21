@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat with VR</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom right, #93C5FD, #1E3A8A);
+      color: white;
+      display: flex;
+      height: 100vh;
+    }
+
+    #chatContainer {
+      display: flex;
+      flex: 1;
+      margin: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+    }
+
+    #chatLogContainer {
+      width: 50%;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+    }
+
+    #chatLog {
+      flex: 1;
+      height: 400px;
+      overflow-y: scroll;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 10px;
+      border-radius: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #60A5FA #1E3A8A;
+    }
+
+    #chatLog::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chatLog::-webkit-scrollbar-thumb {
+      background: #60A5FA;
+      border-radius: 4px;
+    }
+
+    #chatLog::-webkit-scrollbar-track {
+      background: #1E3A8A;
+    }
+
+    .message {
+      margin: 5px 0;
+      padding: 8px 12px;
+      border-radius: 15px;
+      max-width: 75%;
+      word-wrap: break-word;
+    }
+
+    .message.user {
+      background: #60A5FA;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .message.bot {
+      background: rgba(255, 255, 255, 0.15);
+      align-self: flex-start;
+    }
+
+    .message .username {
+      font-weight: bold;
+      color: #FFB700;
+      display: inline;
+      margin-right: 5px;
+    }
+
+    #chatInputContainer {
+      display: flex;
+      padding: 10px;
+    }
+
+    #chatInput {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    #sendButton {
+      background: #2563EB;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 15px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    #sendButton:hover {
+      background: #1E40AF;
+    }
+
+    #vrContainer {
+      width: 50%;
+    }
+
+    a-scene {
+      height: 100%;
+    }
+
+    a-sphere {
+      animation: float 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(1.5px);
+      }
+    }
+
+    #controls {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+    }
+
+    button {
+      background: #2563EB;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1E40AF;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chatContainer">
+    <div id="chatLogContainer">
+      <div id="chatLog"></div>
+      <div id="chatInputContainer">
+        <input id="chatInput" type="text" placeholder="Type a message...">
+        <button id="sendButton">Send</button>
+      </div>
+      <div id="controls">
+        <button id="importButton">Import</button>
+        <button id="exportButton">Export</button>
+        <button id="clearButton">Clear</button>
+      </div>
+    </div>
+    <div id="vrContainer">
+      <a-scene id="vrScene" embedded>
+        <a-entity id="wordGraph" position="0 1.6 -3"></a-entity>
+        <a-camera position="0 1.6 0">
+          <a-light type="point" intensity="0.8" position="0 2 0"></a-light>
+        </a-camera>
+      </a-scene>
+    </div>
+  </div>
+
+  <script>
+    const chatLog = document.getElementById('chatLog');
+    const chatInput = document.getElementById('chatInput');
+    const sendButton = document.getElementById('sendButton');
+    const wordGraph = document.getElementById('wordGraph');
+    const importButton = document.getElementById('importButton');
+    const exportButton = document.getElementById('exportButton');
+    const clearButton = document.getElementById('clearButton');
+
+    let wordData = JSON.parse(localStorage.getItem('wordData')) || { patterns: {} };
+
+    const saveData = () => {
+      localStorage.setItem('wordData', JSON.stringify(wordData));
+    };
+
+    const learnPatterns = (text) => {
+      const words = text.toLowerCase().split(/\W+/).filter(Boolean);
+      words.forEach((word, i) => {
+        if (!wordData.patterns[word]) wordData.patterns[word] = [];
+        if (i > 0) wordData.patterns[word].push(words[i - 1]);
+        if (i < words.length - 1) wordData.patterns[word].push(words[i + 1]);
+      });
+      saveData();
+    };
+
+    const generateResponse = (message) => {
+      const words = message.toLowerCase().split(/\W+/).filter(Boolean);
+      let response = [];
+      words.forEach(word => {
+        if (wordData.patterns[word]) {
+          response = response.concat(wordData.patterns[word]);
+        }
+      });
+      return response.length ? [...new Set(response)].join(' ') : "I made my best guess based on what I know.";
+    };
+
+    const appendMessage = (message, sender) => {
+      const messageElem = document.createElement('div');
+      messageElem.className = `message ${sender}`;
+
+      const username = document.createElement('span');
+      username.className = 'username';
+      username.textContent = sender === 'user' ? 'You:' : 'AI:';
+
+      messageElem.appendChild(username);
+      messageElem.appendChild(document.createTextNode(` ${message}`));
+
+      chatLog.appendChild(messageElem);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    };
+
+    const handleSend = () => {
+      const userMessage = chatInput.value.trim();
+      if (!userMessage) return;
+      appendMessage(userMessage, 'user');
+      learnPatterns(userMessage);
+      const botResponse = generateResponse(userMessage);
+      appendMessage(botResponse, 'bot');
+      chatInput.value = '';
+      updateWordGraph();
+    };
+const updateWordGraph = () => {
+  wordGraph.innerHTML = '';
+  const positions = {};
+  Object.entries(wordData.patterns).forEach(([word, neighbors], index) => {
+    const x = Math.random() * 5 - 2.5;
+    const y = Math.random() * 5 - 2.5;
+    const z = Math.random() * -3 - 1.5;
+    positions[word] = { x, y, z };
+
+    const sphere = document.createElement('a-sphere');
+    sphere.setAttribute('position', `${x} ${y} ${z}`);
+    sphere.setAttribute('radius', '0.2');
+    sphere.setAttribute('color', '#60A5FA');
+    wordGraph.appendChild(sphere);
+
+    // Add label
+    const label = document.createElement('a-text');
+    label.setAttribute('value', word);
+    label.setAttribute('color', 'white');
+    label.setAttribute('align', 'center');
+    label.setAttribute('position', `${x} ${y + 0.3} ${z}`);
+    label.setAttribute('scale', '1.5 1.5 1.5');
+    wordGraph.appendChild(label);
+  });
+
+  Object.entries(wordData.patterns).forEach(([word, neighbors]) => {
+    neighbors.forEach(neighbor => {
+      if (positions[neighbor]) {
+        const line = document.createElement('a-entity');
+        const { x: x1, y: y1, z: z1 } = positions[word];
+        const { x: x2, y: y2, z: z2 } = positions[neighbor];
+        line.setAttribute('line', `start: ${x1} ${y1} ${z1}; end: ${x2} ${y2} ${z2}; color: #1E40AF`);
+        wordGraph.appendChild(line);
+      }
+    });
+  });
+};
+
+
+    sendButton.addEventListener('click', handleSend);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSend();
+    });
+
+    importButton.addEventListener('click', () => {
+      const data = prompt('Paste the JSON data to import:');
+      if (data) {
+        try {
+          wordData = JSON.parse(data);
+          saveData();
+          updateWordGraph();
+          alert('Data imported successfully.');
+        } catch (error) {
+          alert('Invalid JSON data.');
+        }
+      }
+    });
+
+    exportButton.addEventListener('click', () => {
+      const data = JSON.stringify(wordData, null, 2);
+      prompt('Copy the JSON data:', data);
+    });
+
+    clearButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear all data?')) {
+        wordData = { patterns: {} };
+        saveData();
+        updateWordGraph();
+        alert('Data cleared.');
+      }
+    });
+
+    updateWordGraph();
+  </script>
+</body>
+
+</html>
