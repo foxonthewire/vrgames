@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teleport to Instability</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+</head>
+<body>
+  <a-scene vr-mode-ui="enabled: true">
+    <!-- Lighting -->
+    <a-light type="ambient" color="#ffffff" intensity="0.5"></a-light>
+    <a-light type="directional" position="10 10 5" intensity="1"></a-light>
+
+    <!-- Camera -->
+    <a-entity id="player" position="0 1.6 0">
+      <a-camera>
+        <a-cursor></a-cursor>
+      </a-camera>
+    </a-entity>
+
+    <!-- Ground -->
+    <a-plane rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
+
+    <script>
+      const player = document.getElementById('player');
+      const scene = document.querySelector('a-scene');
+
+      // Function to teleport player to a "point of instability"
+      function teleportToInstability() {
+        const unstablePosition = {
+          x: Number.MAX_SAFE_INTEGER / 1000 + 1e15, // Even larger value to push instability further
+          y: 0,
+          z: Number.MAX_SAFE_INTEGER / 1000 + 1e15
+        };
+        player.setAttribute('position', unstablePosition);
+        drawHouse(unstablePosition);
+      }
+
+      // Function to draw a house at a given position
+      function drawHouse(position) {
+        // Base
+        const base = document.createElement('a-box');
+        base.setAttribute('position', {
+          x: position.x,
+          y: position.y + 0.5,
+          z: position.z
+        });
+        base.setAttribute('width', 4);
+        base.setAttribute('height', 1);
+        base.setAttribute('depth', 4);
+        base.setAttribute('color', '#8B0000');
+        scene.appendChild(base);
+
+        // Roof
+        const roof = document.createElement('a-cone');
+        roof.setAttribute('position', {
+          x: position.x,
+          y: position.y + 2,
+          z: position.z
+        });
+        roof.setAttribute('radius-bottom', 2.5);
+        roof.setAttribute('height', 2);
+        roof.setAttribute('color', '#FFD700');
+        scene.appendChild(roof);
+
+        // Door
+        const door = document.createElement('a-box');
+        door.setAttribute('position', {
+          x: position.x,
+          y: position.y + 0.5,
+          z: position.z + 1.9
+        });
+        door.setAttribute('width', 1);
+        door.setAttribute('height', 1.5);
+        door.setAttribute('depth', 0.1);
+        door.setAttribute('color', '#654321');
+        scene.appendChild(door);
+      }
+
+      // Teleport to instability after 3 seconds
+      setTimeout(teleportToInstability, 3000);
+    </script>
+  </a-scene>
+</body>
+</html>
